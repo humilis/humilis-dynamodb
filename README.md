@@ -1,5 +1,7 @@
 # Humilis plug-in to deploy a DynamoDB table
 
+[![PyPI](https://img.shields.io/pypi/v/humilis-dynamodb.svg?style=flat)](https://pypi.python.org/pypi/humilis-dynamodb)
+
 A [humilis][humilis] plug-in layer that deploys a DynamoDB table and, optionally, an API Gateway proxy.
 
 
