@@ -1,0 +1,14 @@
+---
+humilis-dynamodb:
+    description:
+        A dummy environment used for testing the humilis-dynamodb plugin.
+
+    layers:
+        - layer: vpc
+          layer_type: vpc
+
+        - layer: dummy
+          layer_type: dynamodb
+          has_public_api: yes
+          dax_subnets:
+            - $layer_output: {layer_name: vpc, output_name: PublicSubnet1}

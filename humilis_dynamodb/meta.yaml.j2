@@ -1,0 +1,80 @@
+---
+meta:
+    description:
+        A DynamoDB table, maybe with DAX, maybe with API Gateway proxy
+
+    parameters:
+        has_public_api:
+            description: set to yes if you want to deploy an API GTW REST API
+            value: no
+
+        key_name:
+            description: the name of the attribute used as a DynamoDB key
+            value: key
+
+        api_description:
+            description: A description to associate to the created API
+            value:
+
+        api_key_required:
+            description: Whether an API is required to access the API
+            value: yes
+
+        hosted_zone_id:
+            description: The hosted zone ID where the domain name will be recorded
+            value:
+
+        domain_name:
+            description: Domain name to associate to the root resource
+            value:
+
+        certificate_arn:
+            description: ARN of the Cert for the domain name.
+            value:
+
+        stream_name:
+            description: The name of the target Kinesis stream
+            value:
+
+        partition_key_path:
+            description:
+                A global value for partition_key_path. Overriden at the path level.
+            value:
+                # Works well with Polku's SDKs
+                anonymousId
+
+        partition_key:
+            description:
+                A global value for the partition key. Overriden at the path level.
+            value:
+
+        sent_at_path:
+            description:
+                A global value for sent_at_ts_path. Overriden at the path level.
+            value:
+                sentAt
+
+        api_resources:
+            description: A list of API resources
+            value:
+                - path: objects
+
+        read_capacity:
+            description: The DynamoDB read capacity
+            value: 1
+
+        write_capacity:
+            description: The DynamoDB write capacity
+            value: 1
+
+        dax_subnets:
+            description: List of subnet IDs onto which a DAX cluster will be deployed
+            value: []
+
+        dax_node_type:
+            description: The type of the DAX nodes
+            value: "dax.r3.large"
+
+        dax_replication_factor:
+            description: The replication factor for the DAX cluster
+            value: 1

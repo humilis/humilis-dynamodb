@@ -1,0 +1,4 @@
+include *.md
+include *.txt
+include humilis_dynamodb/*.j2
+include humilis_dynamodb/*.yaml
