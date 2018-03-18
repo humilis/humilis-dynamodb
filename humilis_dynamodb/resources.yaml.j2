@@ -208,7 +208,7 @@ resources:
                       "Keys": [
                           #foreach( $key in $keyList.split("[,]") )
                           {
-                              "{{key_attribute}}": {
+                              "key": {
                                   #if($namespace=='')
                                   "S": "$key"
                                   #else
