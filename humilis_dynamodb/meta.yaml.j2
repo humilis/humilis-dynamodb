@@ -8,9 +8,29 @@ meta:
             description: set to yes if you want to deploy an API GTW REST API
             value: no
 
-        key_name:
+        has_api_cache:
+            description: whether the API has a cache
+            value: no
+
+        api_cache_size:
+            description: the size in Gb of the cache cluster associated to the API
+            value: 0.5
+
+        api_cache_ttl:
+            description: TTL for the API cache, in seconds
+            value: 3600
+
+        key_attribute:
             description: the name of the attribute used as a DynamoDB key
             value: key
+
+        value_attribute:
+            description: the name of the attribute to return as response
+            value: value
+
+        namespace_parameter:
+            description: list of request parameters that define a key namespace
+            value:
 
         api_description:
             description: A description to associate to the created API
@@ -19,6 +39,10 @@ meta:
         api_key_required:
             description: Whether an API is required to access the API
             value: yes
+
+        request_parameters:
+            description: A map of request parameters
+            value: {}
 
         hosted_zone_id:
             description: The hosted zone ID where the domain name will be recorded
@@ -53,11 +77,6 @@ meta:
                 A global value for sent_at_ts_path. Overriden at the path level.
             value:
                 sentAt
-
-        api_resources:
-            description: A list of API resources
-            value:
-                - path: objects
 
         read_capacity:
             description: The DynamoDB read capacity

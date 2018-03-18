@@ -1,6 +1,7 @@
 ---
 {% set globs = {"prevpath": ""} %}
 {% set already_created_resources=[] %}
+{% set table_name = __context.environment.name + '-' + __context.layer.name + '-' + __context.stage %}
 resources:
     Table:
       Type: "AWS::DynamoDB::Table"
@@ -14,7 +15,7 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: {{read_capacity}}
           WriteCapacityUnits: {{write_capacity}}
-        TableName: {{__context.environment.name}}-{{__context.layer.name}}-{{__context.stage}}
+        TableName: {{table_name}}
 
     {% if dax_subnets %}
     DaxIamRole:
@@ -108,9 +109,7 @@ resources:
                         - DistributionDomainName
     {% endif %}
 
-    {% for resource in api_resources %}
-    {% set resid = resource.path|replace('/', '') %}
-    Role{{resid.title()}}:
+    Role:
       Type: "AWS::IAM::Role"
       Properties:
         AssumeRolePolicyDocument:
@@ -137,73 +136,49 @@ resources:
                         - Table
                         - Arn
 
-    # Create parent resources
-    {% if '/' in resource.path %}
-    {% set _ = globs.update({'prevpath': ''}) %}
-    {% for path in resource.path.split('/') %}
-    {% set subresid = globs.prevpath+path %}
-    {% if subresid not in already_created_resources %}
-    {% set _ = already_created_resources.append(subresid) %}
-    Resource{{subresid.title()}}:
-      Type: "AWS::ApiGateway::Resource"
+    RequestValidator:
+      Type: "AWS::ApiGateway::RequestValidator"
       Properties:
+        Name: 'RequestValidator'
         RestApiId: {"Ref": "RestApi"}
-        ParentId:
-            {% if globs.prevpath %}
-            {"Ref": Resource{{globs.prevpath.title()}}}
-            {% else %}
-            "Fn::GetAtt":
-              - RestApi
-              - RootResourceId
-            {% endif %}
-        PathPart: "{{path}}"
-    {% endif %}
-    {% set _ = globs.update({"prevpath": subresid}) %}
-    {% endfor %}
-    {% endif %}
+        ValidateRequestParameters: yes
 
-    {% if resid not in already_created_resources %}
-    {% set _ = already_created_resources.append(resid) %}
-    Resource{{resid.title()}}:
-      Type: "AWS::ApiGateway::Resource"
-      Properties:
-        RestApiId: {"Ref": "RestApi"}
-        ParentId:
-            {% if '/' in resource.path %}
-            {"Ref": Resource{{''.join(resource.path.split('/')[:-1]).title()}}}
-            {% else %}
-            "Fn::GetAtt":
-              - RestApi
-              - RootResourceId
-            {% endif %}
-        PathPart: "{{resource.path.split('/')[-1]}}"
-    {% endif %}
-
-    {% if not resource.method or resource.method.upper() == 'GET' %}
-    MethodGet{{resid.title()}}:
+    MethodGet:
       Type: "AWS::ApiGateway::Method"
       Properties:
         RestApiId: {"Ref": "RestApi"}
-        ResourceId: {"Ref": "Resource{{resid.title()}}"}
+        ResourceId:
+            "Fn::GetAtt":
+              - RestApi
+              - RootResourceId
         ApiKeyRequired: {{api_key_required}}
         HttpMethod: GET
         AuthorizationType: NONE
+        RequestValidatorId:
+            Ref: RequestValidator
         MethodResponses:
           - ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: true
               method.response.header.Access-Control-Allow-Methods: true
               method.response.header.Access-Control-Allow-Origin: true
             StatusCode: '200'
-        {% if resource.request_parameters %}
         RequestParameters:
-          {% for k, v in resource.request_parameters.items() %}
+          "method.request.querystring.{{key_attribute}}": yes
+          {% if namespace_parameter %}
+          "method.request.querystring.{{namespace_parameter}}": no
+          {% endif %}
+          {% for k, v in request_parameters.items() %}
           "method.request.{{k}}": {{v}}
           {% endfor %}
-        {% endif %}
         Integration:
           Type: AWS
           IntegrationHttpMethod: POST
-          Credentials: {"Fn::GetAtt": ["Role{{resid.title()}}", "Arn"]}
+          CacheKeyParameters:
+            - "method.request.querystring.{{key_attribute}}"
+          {% if namespace_parameter %}
+            - "method.request.querystring.{{namespace_parameter}}"
+          {% endif %}
+          Credentials: {"Fn::GetAtt": ["Role", "Arn"]}
           Uri:
             "Fn::Join":
               - ""
@@ -215,9 +190,17 @@ resources:
                   method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
                   method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
                   method.response.header.Access-Control-Allow-Origin: "'*'"
+                ResponseTemplates:
+                    "application/json": |
+                      #set($resps=$input.path('$.Responses.{{table_name}}'))
+                      { #foreach($resp in $resps)"$resp.key.S": $resp.value.S #if($foreach.hasNext),#end#end}
+
           RequestTemplates:
             "application/json": |
-              #set($keyList = $input.params().querystring.get('{{key_name}}'))
+              #set($keyList = $input.params().querystring.get('{{key_attribute}}'))
+              {% if namespace_parameter %}
+              #set($namespace = $input.params().querystring.get('{{namespace_parameter}}'))
+              {% endif %}
               {
                   "RequestItems":
                   {
@@ -225,8 +208,12 @@ resources:
                       "Keys": [
                           #foreach( $key in $keyList.split("[,]") )
                           {
-                              "{{key_name}}": {
+                              "{{key_attribute}}": {
+                                  #if($namespace=='')
                                   "S": "$key"
+                                  #else
+                                  "S": "$namespace:$key"
+                                  #end
                               }
                           }
                           #if($foreach.hasNext),#end
@@ -235,12 +222,14 @@ resources:
                     }
                   }
               }
-    {% endif %}
 
-    MethodOptions{{resid.title()}}:
+    MethodOptions:
       Type: "AWS::ApiGateway::Method"
       Properties:
-        ResourceId: {"Ref": "Resource{{resid.title()}}"}
+        ResourceId:
+            "Fn::GetAtt":
+              - RestApi
+              - RootResourceId
         RestApiId: {"Ref": "RestApi"}
         AuthorizationType: NONE
         HttpMethod: OPTIONS
@@ -264,24 +253,22 @@ resources:
               method.response.header.Access-Control-Allow-Origin: true
             StatusCode: '200'
 
-    {% endfor %}
-
-
     RestApiDeployment:
       Type: "AWS::ApiGateway::Deployment"
       DependsOn:
-        {% for resource in api_resources %}
-        {% set resid = resource.path|replace('/', '') %}
-        {% if not resource.method or resource.method.upper() == 'GET' %}
-        - MethodGet{{resid.title()}}
-        {% endif %}
-        - MethodOptions{{resid.title()}}
-        {% endfor %}
+        - MethodGet
+        - MethodOptions
       Properties:
           Description: "{{__context.environment.name}} ({{__context.stage}})"
-          RestApiId:
-            {"Ref": "RestApi"}
+          RestApiId: {"Ref": "RestApi"}
           StageName: {{__context.stage|lower}}
+          {% if has_api_cache %}
+          StageDescription:
+            CacheClusterEnabled: yes
+            CacheTtlInSeconds: {{api_cache_ttl}}
+            CachingEnabled: yes
+            CacheClusterSize: {{api_cache_size}}
+          {% endif %}
 
     ApiKey:
       Type: "AWS::ApiGateway::ApiKey"
