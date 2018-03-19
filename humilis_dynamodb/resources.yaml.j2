@@ -161,7 +161,9 @@ resources:
               method.response.header.Access-Control-Allow-Headers: true
               method.response.header.Access-Control-Allow-Methods: true
               method.response.header.Access-Control-Allow-Origin: true
-            StatusCode: '200'
+            StatusCode: 200
+          - StatusCode: 400
+          - StatusCode: 500
         RequestParameters:
           "method.request.querystring.{{key_attribute}}": yes
           {% if namespace_parameter %}
@@ -186,6 +188,7 @@ resources:
           PassthroughBehavior: WHEN_NO_TEMPLATES
           IntegrationResponses:
               - StatusCode: 200
+                SelectionPattern: 200
                 ResponseParameters:
                   method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
                   method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
@@ -193,8 +196,15 @@ resources:
                 ResponseTemplates:
                     "application/json": |
                       #set($resps=$input.path('$.Responses.{{table_name}}'))
-                      { #foreach($resp in $resps)"$resp.key.S": $resp.value.S #if($foreach.hasNext),#end#end}
-
+                      #set($unproc=$input.path('$.UnprocessedKeys.{{table_name}}.Keys'))
+                      {
+                        "Response": {{'{#'}}foreach($resp in $resps)"$resp.key.S": $resp.value.S #if($foreach.hasNext),#end#end},
+                        "UnprocessedKeys": [#foreach($item in $unproc)"$item.key.S"#if($foreach.hasNext),#end#end]
+                      }
+              - StatusCode: 400
+                SelectionPattern: 400
+              - StatusCode: 500
+                SelectionPattern: 500
           RequestTemplates:
             "application/json": |
               #set($keyList = $input.params().querystring.get('{{key_attribute}}'))
