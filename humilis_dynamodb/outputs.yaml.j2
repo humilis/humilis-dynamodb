@@ -1,5 +1,11 @@
 ---
 outputs:
+    {% for resource in resources %}
+    TableName{{loop.index}}:
+        Description:
+            The name of the DynamoDB table
+        Value: {Ref: Table{{loop.index}}}
+    {% endfor %}
     TableName:
         Description:
             The name of the DynamoDB table

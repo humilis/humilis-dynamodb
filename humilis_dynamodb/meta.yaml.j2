@@ -4,6 +4,10 @@ meta:
         A DynamoDB table, maybe with DAX, maybe with API Gateway proxy
 
     parameters:
+        resources:
+            description: a list of API resources, each associated to a separate DynamoDB table
+            value: []
+
         has_public_api:
             description: set to yes if you want to deploy an API GTW REST API
             value: no

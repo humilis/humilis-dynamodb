@@ -1,8 +1,21 @@
 ---
-{% set globs = {"prevpath": ""} %}
-{% set already_created_resources=[] %}
 {% set table_name = __context.environment.name + '-' + __context.layer.name + '-' + __context.stage %}
 resources:
+    {% for resource in resources %}
+    Table{{loop.index}}:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: key
+            AttributeType: S
+        KeySchema:
+          - AttributeName: key
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: {{read_capacity}}
+          WriteCapacityUnits: {{write_capacity}}
+        TableName: {{table_name}}-{{resource}}
+    {% endfor %}
     Table:
       Type: "AWS::DynamoDB::Table"
       Properties:
@@ -41,9 +54,17 @@ resources:
                       Action:
                         - "dynamodb:*"
                       Resource:
+                        {% if resources %}
+                        {% for resource in resources %}
+                        - "Fn::GetAtt":
+                          - Table{{loop.index}}
+                          - Arn
+                        {% endfor %}
+                        {% else %}
                         - "Fn::GetAtt":
                           - Table
                           - Arn
+                        {% endif %}
 
     DaxCluster:
         Type: AWS::DAX::Cluster
@@ -132,6 +153,11 @@ resources:
                     - "dynamodb:BatchGetItem"
                     - "dynamodb:GetItem"
                   Resource:
+                    {% for resource in resources %}
+                    - "Fn::GetAtt":
+                        - Table{{loop.index}}
+                        - Arn
+                    {% endfor %}
                     - "Fn::GetAtt":
                         - Table
                         - Arn
@@ -143,6 +169,132 @@ resources:
         RestApiId: {"Ref": "RestApi"}
         ValidateRequestParameters: yes
 
+    {% for resource in resources %}
+    Resource{{loop.index}}:
+      Type: "AWS::ApiGateway::Resource"
+      Properties:
+        RestApiId:
+          {"Ref": "RestApi"}
+        ParentId:
+            "Fn::GetAtt":
+              - RestApi
+              - RootResourceId
+        PathPart: "{{resource}}"
+
+    MethodGet{{loop.index}}:
+      Type: "AWS::ApiGateway::Method"
+      Properties:
+        RestApiId: {"Ref": "RestApi"}
+        ResourceId: {"Ref": "Resource{{loop.index}}"}
+        ApiKeyRequired: {{api_key_required}}
+        HttpMethod: GET
+        AuthorizationType: NONE
+        RequestValidatorId:
+            Ref: RequestValidator
+        MethodResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: true
+              method.response.header.Access-Control-Allow-Methods: true
+              method.response.header.Access-Control-Allow-Origin: true
+            StatusCode: 200
+          - StatusCode: 400
+          - StatusCode: 500
+        RequestParameters:
+          "method.request.querystring.{{key_attribute}}": yes
+          {% if namespace_parameter %}
+          "method.request.querystring.{{namespace_parameter}}": no
+          {% endif %}
+          {% for k, v in request_parameters.items() %}
+          "method.request.{{k}}": {{v}}
+          {% endfor %}
+        Integration:
+          Type: AWS
+          IntegrationHttpMethod: POST
+          CacheKeyParameters:
+            - "method.request.querystring.{{key_attribute}}"
+          {% if namespace_parameter %}
+            - "method.request.querystring.{{namespace_parameter}}"
+          {% endif %}
+          Credentials: {"Fn::GetAtt": ["Role", "Arn"]}
+          Uri:
+            "Fn::Join":
+              - ""
+              - ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":", "dynamodb:action/BatchGetItem"]
+          PassthroughBehavior: WHEN_NO_TEMPLATES
+          IntegrationResponses:
+              - StatusCode: 200
+                SelectionPattern: 200
+                ResponseParameters:
+                  method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                  method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+                  method.response.header.Access-Control-Allow-Origin: "'*'"
+                ResponseTemplates:
+                    "application/json": |
+                      #set($resps=$input.path('$.Responses.{{table_name}}-{{resource}}'))
+                      #set($unproc=$input.path('$.UnprocessedKeys.{{table_name}}-{{resource}}.Keys'))
+                      {
+                        "Response": {{'{#'}}foreach($resp in $resps)"$resp.key.S": $resp.value.S #if($foreach.hasNext),#end#end},
+                        "UnprocessedKeys": [#foreach($item in $unproc)"$item.key.S"#if($foreach.hasNext),#end#end]
+                      }
+              - StatusCode: 400
+                SelectionPattern: 400
+              - StatusCode: 500
+                SelectionPattern: 500
+          RequestTemplates:
+            "application/json": |
+              #set($keyList = $input.params().querystring.get('{{key_attribute}}'))
+              {% if namespace_parameter %}
+              #set($namespace = $input.params().querystring.get('{{namespace_parameter}}'))
+              {% endif %}
+              {
+                  "RequestItems":
+                  {
+                    "{{table_name}}-{{resource}}": {
+                      "Keys": [
+                          #foreach( $key in $keyList.split("[,]") )
+                          {
+                              "key": {
+                                  #if($namespace=='')
+                                  "S": "$key"
+                                  #else
+                                  "S": "$namespace:$key"
+                                  #end
+                              }
+                          }
+                          #if($foreach.hasNext),#end
+                          #end
+                      ]
+                    }
+                  }
+              }
+
+    MethodOptions{{loop.index}}:
+      Type: "AWS::ApiGateway::Method"
+      Properties:
+        ResourceId: {"Ref": "Resource{{loop.index}}"}
+        RestApiId: {"Ref": "RestApi"}
+        AuthorizationType: NONE
+        HttpMethod: OPTIONS
+        Integration:
+          Type: MOCK
+          IntegrationResponses:
+            - ResponseParameters:
+                method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+                method.response.header.Access-Control-Allow-Origin: "'*'"
+              ResponseTemplates:
+                application/json: ''
+              StatusCode: 200
+          PassthroughBehavior: NEVER
+          RequestTemplates:
+            application/json: '{"statusCode": 200}'
+        MethodResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: true
+              method.response.header.Access-Control-Allow-Methods: true
+              method.response.header.Access-Control-Allow-Origin: true
+            StatusCode: '200'
+    {% endfor %}
     MethodGet:
       Type: "AWS::ApiGateway::Method"
       Properties:
@@ -214,7 +366,7 @@ resources:
               {
                   "RequestItems":
                   {
-                    "{{__context.environment.name}}-{{__context.layer.name}}-{{__context.stage}}": {
+                    "{{table_name}}": {
                       "Keys": [
                           #foreach( $key in $keyList.split("[,]") )
                           {
@@ -266,6 +418,10 @@ resources:
     RestApiDeployment:
       Type: "AWS::ApiGateway::Deployment"
       DependsOn:
+      {% for resource in resources %}
+        - MethodGet{{loop.index}}
+        - MethodOptions{{loop.index}}
+      {% endfor %}
         - MethodGet
         - MethodOptions
       Properties:
