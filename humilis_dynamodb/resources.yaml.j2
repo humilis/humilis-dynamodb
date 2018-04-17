@@ -1,5 +1,4 @@
 ---
-{% set table_name = __context.environment.name + '-' + __context.layer.name + '-' + __context.stage %}
 resources:
     {% for resource in resources %}
     Table{{loop.index}}:

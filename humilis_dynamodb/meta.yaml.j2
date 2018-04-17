@@ -4,6 +4,10 @@ meta:
         A DynamoDB table, maybe with DAX, maybe with API Gateway proxy
 
     parameters:
+        table_name:
+            description: the name of the backend DynamoDB table
+            value: {{__context.environment.name + '-' + __context.layer.name + '-' + __context.stage}}
+
         resources:
             description: a list of API resources, each associated to a separate DynamoDB table
             value: []
