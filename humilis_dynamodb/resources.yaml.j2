@@ -88,6 +88,45 @@ resources:
     {% endif %}
 
     {% if has_public_api %}
+    UsagePlan:
+        Type: AWS::ApiGateway::UsagePlan
+        DependsOn:
+          - "RestApiDeployment"
+          - "RestApi"
+        Properties:
+          ApiStages:
+              - ApiId: {"Ref": "RestApi"}
+                Stage: "{{__context.stage.lower()}}"
+          Description: Customer ABC's usage plan
+          {% if api_monthly_quota_limit %}
+          Quota:
+            Limit: {{api_monthly_quota_limit}}
+            Period: MONTH
+          {% elif api_daily_quota_limit %}
+          Quota:
+            Limit: {{api_dayly_quota_limit}}
+            Period: DAY
+          {% endif %}
+          {% if api_burst_limit or api_rate_limit %}
+          Throttle:
+            {% if api_burst_limit %}
+            BurstLimit: {{api_burst_limit}}
+            {% endif %}
+            {% if api_rate_limit %}
+            RateLimit: {{api_rate_limit}}
+            {% endif %}
+          {% endif %}
+
+    UsagePlanKey:
+      Type: "AWS::ApiGateway::UsagePlanKey"
+      DependsOn:
+        - "RestApiDeployment"
+        - "RestApi"
+      Properties:
+        KeyId: {Ref: ApiKey}
+        KeyType: API_KEY
+        UsagePlanId: {Ref: UsagePlan}
+
     RestApi:
       Type: "AWS::ApiGateway::RestApi"
       Properties:
@@ -447,4 +486,58 @@ resources:
         StageKeys:
           - RestApiId: {"Ref": "RestApi"}
             StageName: "{{__context.stage|lower}}"
+
+    {% for key in client_keys %}
+    ApiKey{{key.name.title()}}:
+      Type: "AWS::ApiGateway::ApiKey"
+      DependsOn:
+        - "RestApiDeployment"
+        - "RestApi"
+      Properties:
+        Name: "{{__context.environment.name}}-{{__context.layer.name}}-{{key.name}}-{{__context.stage}}"
+        Description: "API key for stage client {{key.name}} of environment {{__context.environment.name}}"
+        Enabled: "true"
+        StageKeys:
+          - RestApiId: {"Ref": "RestApi"}
+            StageName: "{{__context.stage|lower}}"
+
+    UsagePlan{{key.name.title()}}:
+      Type: AWS::ApiGateway::UsagePlan
+      DependsOn:
+        - "RestApiDeployment"
+        - "RestApi"
+      Properties:
+        ApiStages:
+            - ApiId: {"Ref": "RestApi"}
+              Stage: "{{__context.stage.lower()}}"
+        Description: "Customer {{key.name}} usage plan"
+        {% if key.api_monthly_quota_limit %}
+        Quota:
+          Limit: {{key.api_monthly_quota_limit}}
+          Period: MONTH
+        {% elif key.api_daily_quota_limit %}
+        Quota:
+          Limit: {{key.api_dayly_quota_limit}}
+          Period: DAY
+        {% endif %}
+        {% if key.api_burst_limit or key.api_rate_limit %}
+        Throttle:
+          {% if key.api_burst_limit %}
+          BurstLimit: {{key.api_burst_limit}}
+          {% endif %}
+          {% if api_rate_limit %}
+          RateLimit: {{key.api_rate_limit}}
+          {% endif %}
+        {% endif %}
+
+    UsagePlanKey{{key.name.title()}}:
+      Type: "AWS::ApiGateway::UsagePlanKey"
+      DependsOn:
+        - "RestApiDeployment"
+        - "RestApi"
+      Properties:
+        KeyId: {Ref: ApiKey{{key.name.title()}}}
+        KeyType: API_KEY
+        UsagePlanId: {Ref: UsagePlan{{key.name.title()}}}
+    {% endfor %}
     {% endif %}

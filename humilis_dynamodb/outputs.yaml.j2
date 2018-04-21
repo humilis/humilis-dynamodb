@@ -56,3 +56,15 @@ outputs:
                 - ["https://", {Ref: RestApi}, ".execute-api.",
                    {Ref: "AWS::Region"}, ".amazonaws.com/", "{{__context.stage.lower()}}"]
     {% endif %}
+
+    {% for key in client_keys %}
+    ApiKey{{key.name.title()}}:
+        Description: API Key for client {{key.name}}
+        Value:
+            Ref: ApiKey{{key.name.title()}}
+
+    UsagePlan{{key.name.title()}}:
+        Description: Usage plan for client {{key.name}}
+        Value:
+            Ref: UsagePlan{{key.name.title()}}
+    {% endfor %}

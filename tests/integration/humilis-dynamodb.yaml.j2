@@ -9,6 +9,15 @@ humilis-dynamodb:
           has_public_api: yes
           has_api_cache: no
           namespace_parameter: ns
+          api_burst_limit: 5000
+          api_rate_limit: 1000
+          client_keys:
+            - name: client1
+              api_burst_limit: 500
+              api_rate_limit: 100
+            - name: client2
+              api_burst_limit: 1500
+              api_rate_limit: 500
           resources:
             - v1
             - v2
