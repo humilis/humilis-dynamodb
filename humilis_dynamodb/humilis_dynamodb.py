@@ -133,7 +133,7 @@ class Table:
             if self._rcount >= config.REPORT_EVERY:
                 print("{0:<8} ... {1} WPS".format(
                     self._tcount,
-                    round(self._tcount/(time.time()-self.t0)),
+                    round(self._tcount/(time.time()-self._t0)),
                     flush=True))
                 self._rcount = 0
 
