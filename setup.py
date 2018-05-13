@@ -11,7 +11,7 @@ description = "Humilis plug-in to deploy a DynamoDB table"
 
 try:
     import pypandoc
-    long_description = pypandoc.convert('README.md', 'rst')
+    long_description = pypandoc.convert("README.md", "rst")
 except(IOError, ImportError, RuntimeError):
     if os.path.isfile("README.md"):
         long_description = codecs.open(os.path.join(dirname, "README.md"),
@@ -24,8 +24,8 @@ setup(
     include_package_data=True,
     package_data={
         "": ["*.j2", "*.yaml"]},
-    packages=find_packages(include=['humilis_dynamodb',
-                                    'humilis_dynamodb.*']),
+    packages=find_packages(include=["humilis_dynamodb",
+                                    "humilis_dynamodb.*"]),
     version=__version__,
     author=__author__,
     author_email="german@findhotel.net",
