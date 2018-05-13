@@ -271,7 +271,7 @@ resources:
                       #set($resps=$input.path("$.Responses.['{{table_name}}-{{resource}}']"))
                       #set($unproc=$input.path("$.UnprocessedKeys.['{{table_name}}-{{resource}}'].Keys"))
                       {
-                        "Response": {{'{#'}}foreach($resp in $resps)"$resp.key.S": $resp.value.S#if($foreach.hasNext),#end#end},
+                        "Response": {{'{#'}}foreach($resp in $resps)"$resp.key.S": $resp.value.S#if($foreach.hasNext), #end#end},
                         "UnprocessedKeys": [#foreach($item in $unproc)"$item.key.S"#if($foreach.hasNext),#end#end]
                       }
               - StatusCode: 400
