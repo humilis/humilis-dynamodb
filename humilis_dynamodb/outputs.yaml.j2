@@ -6,10 +6,6 @@ outputs:
             The name of the DynamoDB table
         Value: {Ref: Table{{loop.index}}}
     {% endfor %}
-    TableName:
-        Description:
-            The name of the DynamoDB table
-        Value: {Ref: Table}
 
     {% if dax_subnets %}
     DaxClusterArn:

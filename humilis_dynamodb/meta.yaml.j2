@@ -28,9 +28,14 @@ meta:
             description: the name of the backend DynamoDB table
             value: {{__context.environment.name + '-' + __context.layer.name + '-' + __context.stage}}
 
+        default_resource:
+            description: the root resource will become an alias of this resource
+            value:
+
         resources:
             description: a list of API resources, each associated to a separate DynamoDB table
-            value: []
+            value:
+                - default
 
         has_public_api:
             description: set to yes if you want to deploy an API GTW REST API
