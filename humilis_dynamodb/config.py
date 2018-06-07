@@ -11,7 +11,7 @@ REPORT_EVERY = 1000
 
 # DynamoDB write capacity during push
 PUSH_WRITE_CAPACITY = int(
-    os.environ.get("HUMILIS_DYNAMODB_PUSH_WRITE_CAPACITY", 600))
+    os.environ.get("HUMILIS_DYNAMODB_PUSH_WRITE_CAPACITY", 800))
 
 # Initial sleep time between DynamoDB write requests. This value will be 
 # dynamically modified to maximise throughput.
