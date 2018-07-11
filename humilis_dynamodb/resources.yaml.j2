@@ -4,23 +4,6 @@
 {% endif %}
 resources:
     {% for resource in resources %}
-    {% if resource != 'v0.0.6' %}
-    Table{{loop.index}}:
-      Type: "AWS::DynamoDB::Table"
-      Properties:
-        AttributeDefinitions:
-          - AttributeName: key
-            AttributeType: S
-        KeySchema:
-          - AttributeName: key
-            KeyType: HASH
-        ProvisionedThroughput:
-          ReadCapacityUnits: {{read_capacity}}
-          WriteCapacityUnits: {{write_capacity}}
-        TableName: {{table_name}}-{{resource}}
-    {% endif %}
-
-    {% if resource == 'v0.0.6' %}
     Table{{resource.replace('.', '').title()}}:
       Type: "AWS::DynamoDB::Table"
       Properties:
@@ -34,7 +17,6 @@ resources:
           ReadCapacityUnits: {{read_capacity}}
           WriteCapacityUnits: {{write_capacity}}
         TableName: {{table_name}}-{{resource}}
-    {% endif %}
     {% endfor %}
 
     {% if dax_subnets %}
@@ -62,16 +44,9 @@ resources:
                         - "dynamodb:*"
                       Resource:
                         {% for resource in resources %}
-                        {% if resource != 'v0.0.6' %}
-                        - "Fn::GetAtt":
-                          - Table{{loop.index}}
-                          - Arn
-                        {% endif %}
-                        {% if resource == 'v0.0.6' %}
                         - "Fn::GetAtt":
                           - Table{{resource.replace('.', '').title()}}
                           - Arn
-                        {% endif %}
                         {% endfor %}
 
     DaxCluster:
@@ -201,16 +176,9 @@ resources:
                     - "dynamodb:GetItem"
                   Resource:
                     {% for resource in resources %}
-                    {% if resource != 'v0.0.6' %}
-                    - "Fn::GetAtt":
-                        - Table{{loop.index}}
-                        - Arn
-                    {% endif %}
-                    {% if resource == 'v0.0.6' %}
                     - "Fn::GetAtt":
                         - Table{{resource.replace('.', '').title()}}
                         - Arn
-                    {% endif %}
                     {% endfor %}
 
     RequestValidator:

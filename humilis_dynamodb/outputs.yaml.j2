@@ -1,19 +1,10 @@
 ---
 outputs:
     {% for resource in resources %}
-    {% if resource != 'v0.0.6' %}
-    TableName{{loop.index}}:
-        Description:
-            The name of the DynamoDB table
-        Value: {Ref: Table{{loop.index}}}
-    {% endif %}
-
-    {% if resource == 'v0.0.6' %}
     TableName{{resource.replace('.', '').title()}}:
         Description:
             The name of the DynamoDB table
         Value: {Ref: Table{{resource.replace('.', '').title()}}}
-    {% endif %}
     {% endfor %}
 
     {% if dax_subnets %}
