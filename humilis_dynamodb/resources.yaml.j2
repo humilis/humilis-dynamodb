@@ -189,7 +189,7 @@ resources:
         ValidateRequestParameters: yes
 
     {% for resource in resources %}
-    Resource{{loop.index}}:
+    Resource{{resource.replace('.', '').title()}}:
       Type: "AWS::ApiGateway::Resource"
       Properties:
         RestApiId:
@@ -200,11 +200,11 @@ resources:
               - RootResourceId
         PathPart: "{{resource}}"
 
-    MethodGet{{loop.index}}:
+    MethodGet{{resource.replace('.', '').title()}}:
       Type: "AWS::ApiGateway::Method"
       Properties:
         RestApiId: {"Ref": "RestApi"}
-        ResourceId: {"Ref": "Resource{{loop.index}}"}
+        ResourceId: {"Ref": "Resource{{resource.replace('.', '').title()}}"}
         ApiKeyRequired: {{api_key_required}}
         HttpMethod: GET
         AuthorizationType: NONE
@@ -287,10 +287,10 @@ resources:
                   }
               }
 
-    MethodOptions{{loop.index}}:
+    MethodOptions{{resource.replace('.', '').title()}}:
       Type: "AWS::ApiGateway::Method"
       Properties:
-        ResourceId: {"Ref": "Resource{{loop.index}}"}
+        ResourceId: {"Ref": "Resource{{resource.replace('.', '').title()}}"}
         RestApiId: {"Ref": "RestApi"}
         AuthorizationType: NONE
         HttpMethod: OPTIONS
@@ -438,8 +438,8 @@ resources:
       Type: "AWS::ApiGateway::Deployment"
       DependsOn:
       {% for resource in resources %}
-        - MethodGet{{loop.index}}
-        - MethodOptions{{loop.index}}
+        - MethodGet{{resource.replace('.', '').title()}}
+        - MethodOptions{{resource.replace('.', '').title()}}
       {% endfor %}
         - MethodGet
         - MethodOptions
