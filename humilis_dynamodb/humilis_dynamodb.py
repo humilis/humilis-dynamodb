@@ -17,10 +17,40 @@ class WriteError(Exception):
     pass
 
 
-def load_s3_object(key, bucket, decompress=True):
+def get_client(role_arn=None):
+    """Get S3 client."""
+
+    if role_arn is None:
+        return boto3.client("s3")
+    else:
+        credentials = boto3.client("sts").assume_role(
+            RoleArn=role_arn, RoleSessionName="abc")["Credentials"]
+        return boto3.client(
+            "s3",
+            aws_access_key_id = credentials['AccessKeyId'],
+            aws_secret_access_key = credentials['SecretAccessKey'],
+            aws_session_token = credentials['SessionToken'])
+
+
+def get_resource(role_arn=None):
+    """Get S3 resource."""
+
+    if role_arn is None:
+        return boto3.resource("s3")
+    else:
+        credentials = boto3.client("sts").assume_role(
+            RoleArn=role_arn, RoleSessionName="abc")["Credentials"]
+        return boto3.resource(
+            "s3",
+            aws_access_key_id = credentials['AccessKeyId'],
+            aws_secret_access_key = credentials['SecretAccessKey'],
+            aws_session_token = credentials['SessionToken'])
+
+
+def load_s3_object(key, bucket, decompress=True, role_arn=None):
     """Load an object from S3. Returns a file object."""
 
-    s3 = boto3.client("s3")
+    s3 = get_client(role_arn=role_arn)
     obj = s3.get_object(Bucket=bucket, Key=key)
 
     if decompress:
@@ -31,9 +61,10 @@ def load_s3_object(key, bucket, decompress=True):
     return StringIO(f.read().decode("utf-8"))
 
 
-def save_s3_object(data, key, bucket, format="json"):
+def save_s3_object(data, key, bucket, format="json", role_arn=None):
     """Save dict object to S3 in DynamoDB import format."""
 
+    s3_resource = get_resource(role_arn=role_arn)
     format = format.lower()
     key = key.format(format=format)
     o = BytesIO()
@@ -45,7 +76,7 @@ def save_s3_object(data, key, bucket, format="json"):
                 obj = {k: v}
             f.write((json.dumps(obj) + "\n").encode())
 
-    boto3.resource("s3").Bucket(bucket).put_object(Body=o.getvalue(), Key=key)
+    s3_resource.Bucket(bucket).put_object(Body=o.getvalue(), Key=key)
     return "s3://{}/{}".format(bucket, key)
 
 
