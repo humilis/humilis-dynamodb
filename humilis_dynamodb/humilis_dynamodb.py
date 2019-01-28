@@ -80,16 +80,18 @@ def save_s3_object(data, key, bucket, format="json", role_arn=None):
     return "s3://{}/{}".format(bucket, key)
 
 
-def s3_to_dynamodb(key, tablename, bucket, ignore_row=None):
+def s3_to_dynamodb(key, tablename, bucket, ignore_row=None, scaleup=True):
     """Push S3 object to DynamoDB."""
     dynamodb = Table(tablename)
-    dynamodb.scale_up()
+    if scaleup:
+        dynamodb.scale_up()
     for row in load_s3_object(key, bucket):
         if ignore_row is not None and ignore_row(row):
             continue
         dynamodb.write_item(row)
     dynamodb.flush()
-    dynamodb.scale_down()
+    if scaleup:
+        dynamodb.scale_down()
 
 
 def capacity_setter(func):

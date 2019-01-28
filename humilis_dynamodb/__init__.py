@@ -1,5 +1,5 @@
 """Humilis plug-in to deploy a DynamoDB table."""
 
 
-__version__ = "0.1.8"
+__version__ = "0.2.0"
 __author__ = "German Gomez-Herrero, FindHotel BV"
