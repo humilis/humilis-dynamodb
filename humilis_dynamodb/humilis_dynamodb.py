@@ -80,35 +80,15 @@ def save_s3_object(data, key, bucket, format="json", role_arn=None):
     return "s3://{}/{}".format(bucket, key)
 
 
-def s3_to_dynamodb(key, tablename, bucket, ignore_row=None, scaleup=True):
+def s3_to_dynamodb(key, tablename, bucket, ignore_row=None):
     """Push S3 object to DynamoDB."""
+
     dynamodb = Table(tablename)
-    if scaleup:
-        dynamodb.scale_up()
     for row in load_s3_object(key, bucket):
         if ignore_row is not None and ignore_row(row):
             continue
         dynamodb.write_item(row)
     dynamodb.flush()
-    if scaleup:
-        dynamodb.scale_down()
-
-
-def capacity_setter(func):
-    """Do not throw an error when we are not changing the current capacity."""
-
-    def wrapper(self):
-        try:
-            val = func(self)
-            time.sleep(config.WAIT_TO_SCALE)  # Wait for DynamoDB to scale
-            return val
-        except botocore.exceptions.ClientError as err:
-            if "throughput for the table will not change" in str(err):
-                pass
-            else:
-                raise
-
-    return wrapper
 
 
 class Table:
@@ -127,28 +107,6 @@ class Table:
         self._rcount = 0
         self._tcount = 0
         self._t0 = None
-
-    @property
-    def capacity(self):
-        """The current read/write capacity of the table."""
-        return {k: v for k, v in self._resource.provisioned_throughput.items()
-                if k in {"ReadCapacityUnits", "WriteCapacityUnits"}}
-
-    @capacity_setter
-    def scale_up(self):
-        """Prepare the table for a push by increasing the write capacity."""
-        self._resource.update(
-            ProvisionedThroughput={
-                "WriteCapacityUnits": config.PUSH_WRITE_CAPACITY,
-                "ReadCapacityUnits": self.capacity["ReadCapacityUnits"]})
-
-    @capacity_setter
-    def scale_down(self):
-        """Put the capacity back to its baseline values."""
-        self._resource.update(
-            ProvisionedThroughput={
-                'WriteCapacityUnits': config.BASELINE_WRITE_CAPACITY,
-                'ReadCapacityUnits': self.capacity["ReadCapacityUnits"]})
 
     def flush(self):
         """Flush the items that haven't been pushed to DynamoDB yet."""

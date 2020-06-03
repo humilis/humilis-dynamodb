@@ -1,7 +1,7 @@
 # test requirements
 boto3
 pytest
-pyyaml
+pyyaml==5.2
 mock
 tox
 
