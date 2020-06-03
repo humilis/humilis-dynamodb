@@ -1,7 +1,9 @@
 # dev utilities
+docutils==0.14 # conflict with AWS CLI
 ipython
 ipdb
 pdbpp
 pypandoc
+twine
 
 -r requirements-test.txt
