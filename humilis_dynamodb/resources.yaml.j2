@@ -220,6 +220,10 @@ resources:
           "method.request.querystring.{{key_attribute}}": yes
           {% if namespace_parameter %}
           "method.request.querystring.{{namespace_parameter}}": no
+          {% elif namespace_parameters %}
+          {% for k in namespace_parameters %}
+          "method.request.querystring.{{k}}": no
+          {% endfor %}
           {% endif %}
           {% for k, v in request_parameters.items() %}
           "method.request.{{k}}": {{v}}
@@ -231,6 +235,10 @@ resources:
             - "method.request.querystring.{{key_attribute}}"
           {% if namespace_parameter %}
             - "method.request.querystring.{{namespace_parameter}}"
+          {% elif namespace_parameters %}
+          {% for k in namespace_parameters %}
+            - "method.request.querystring.{{k}}"
+          {% endfor %}
           {% endif %}
           Credentials: {"Fn::GetAtt": ["Role", "Arn"]}
           Uri:
@@ -262,6 +270,15 @@ resources:
               #set($keyList = $input.params().querystring.get('{{key_attribute}}'))
               {% if namespace_parameter %}
               #set($namespace = $input.params().querystring.get('{{namespace_parameter}}'))
+              {% elif namespace_parameters %}
+              #set($namespace = ''
+              {% for param in namespace_parameters %}
+              + $input.params().querystring.get('{{param}}')
+              {% if not loop.last %}
+              + ':'
+              {% endif %}
+              {% endfor %}
+              )
               {% endif %}
               {
                   "RequestItems":
@@ -337,6 +354,10 @@ resources:
           "method.request.querystring.{{key_attribute}}": yes
           {% if namespace_parameter %}
           "method.request.querystring.{{namespace_parameter}}": no
+          {% elif namespace_parameters %}
+          {% for k in namespace_parameters %}
+          "method.request.querystring.{{k}}": no
+          {% endfor %}
           {% endif %}
           {% for k, v in request_parameters.items() %}
           "method.request.{{k}}": {{v}}
@@ -348,6 +369,10 @@ resources:
             - "method.request.querystring.{{key_attribute}}"
           {% if namespace_parameter %}
             - "method.request.querystring.{{namespace_parameter}}"
+          {% elif namespace_parameters %}
+          {% for k in namespace_parameters %}
+            - "method.request.querystring.{{k}}"
+          {% endfor %}
           {% endif %}
           Credentials: {"Fn::GetAtt": ["Role", "Arn"]}
           Uri:
@@ -379,6 +404,15 @@ resources:
               #set($keyList = $input.params().querystring.get('{{key_attribute}}'))
               {% if namespace_parameter %}
               #set($namespace = $input.params().querystring.get('{{namespace_parameter}}'))
+              {% elif namespace_parameters %}
+              #set($namespace = ''
+              {% for param in namespace_parameters %}
+              + $input.params().querystring.get('{{param}}')
+              {% if not loop.last %}
+              + ':'
+              {% endif %}
+              {% endfor %}
+              )
               {% endif %}
               {
                   "RequestItems":
