@@ -8,7 +8,9 @@ humilis-dynamodb:
           layer_type: dynamodb
           has_public_api: yes
           has_api_cache: no
-          namespace_parameter: ns
+          namespace_parameters:
+            - ns1
+            - ns2
           api_burst_limit: 5000
           api_rate_limit: 1000
           client_keys:
