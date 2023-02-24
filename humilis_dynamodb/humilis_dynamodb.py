@@ -124,10 +124,12 @@ class Table:
             self._rcount += (25 - len(self._batch))
             self._tcount += (25 - len(self._batch))
             if self._rcount >= config.REPORT_EVERY:
-                print("{0:<8} ... {1} WPS".format(
-                    self._tcount,
-                    round(self._tcount/(time.time()-self._t0)),
-                    flush=True))
+                print(
+                    "{0:<8} ... {1} WPS".format(
+                        self._tcount,
+                        round(self._tcount / (time.time() - self._t0))
+                    ),
+                    flush=True)
                 self._rcount = 0
 
     def _batch_write_item(self):
